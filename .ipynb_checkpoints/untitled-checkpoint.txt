@@ -1,0 +1,104 @@
+// AI Content writer agent
+# ✅ Install required packages if not already installed (only if running locally)
+# !pip install crewai==0.28.8 crewai_tools==0.1.6 langchain_community==0.0.29
+
+# ✅ Setup
+import os
+import warnings
+warnings.filterwarnings('ignore')
+
+from crewai import Agent, Task, Crew
+from utils import get_openai_api_key
+openai_api_key = get_openai_api_key()
+os.environ["OPENAI_MODEL_NAME"] = "gpt-3.5-turbo"
+
+# ✅ Define Agents
+
+planner = Agent(
+    role="Content Planner",
+    goal="Plan informative, well-structured, and audience-friendly content on {topic}",
+    backstory="You're a planner creating a content structure with Introduction, What/Why/Where, Benefits, Applications, and Conclusion for a blog post on {topic}.",
+    allow_delegation=False,
+    verbose=True
+)
+
+writer = Agent(
+    role="Content Writer",
+    goal="Write clear, helpful, and easy-to-understand content based on the planner's outline",
+    backstory="You're a writer drafting content based on the planner's structure using simple language and informative insights.",
+    allow_delegation=False,
+    verbose=True
+)
+
+editor = Agent(
+    role="Content Editor",
+    goal="Edit and enhance the clarity, tone, grammar, and structure of the article",
+    backstory="You're an editor reviewing and improving the written content to ensure readability, correct grammar, and adherence to structure.",
+    allow_delegation=False,
+    verbose=True
+)
+
+plag_checker = Agent(
+    role="Plagiarism Checker",
+    goal="Check the article for any copied content and ensure originality",
+    backstory="You're responsible for verifying that the content is original and flagging or suggesting changes to any potentially plagiarized segments.",
+    allow_delegation=False,
+    verbose=True
+)
+
+# ✅ Define Tasks
+
+plan = Task(
+    description=(
+        "Create a content outline for a blog post on {topic} using this structure:\n"
+        "1. Introduction\n"
+        "2. What, Why, and Where\n"
+        "3. Benefits\n"
+        "4. Applications\n"
+        "5. Conclusion\n"
+        "Also include SEO keywords and target audience insights."
+    ),
+    expected_output="A content plan including an outline, SEO keywords, and target audience.",
+    agent=planner,
+)
+
+write = Task(
+    description=(
+        "Write a clear and informative blog post on {topic} using the planner's outline. "
+        "Use easy language. Ensure each section (Intro, What/Why/Where, Benefits, Applications, Conclusion) is 2-3 paragraphs long."
+    ),
+    expected_output="A draft article in markdown format with 5 sections, each having 2-3 paragraphs.",
+    agent=writer,
+)
+
+check = Task(
+    description=(
+        "Scan the written content for plagiarism. Identify any potentially copied phrases and suggest replacements. "
+        "Ensure the article is safe for publishing."
+    ),
+    expected_output="A markdown report with plagiarism findings and recommendations if needed.",
+    agent=plag_checker,
+)
+
+edit = Task(
+    description=(
+        "Proofread the article. Improve clarity, structure, and grammar. Ensure tone is friendly and helpful. "
+        "Make sure the blog matches the 5-part structure and is engaging to read."
+    ),
+    expected_output="Final edited article in markdown format, clean and reader-friendly.",
+    agent=editor,
+)
+
+# ✅ Create Crew
+crew = Crew(
+    agents=[planner, writer, plag_checker, editor],
+    tasks=[plan, write, check, edit],
+    verbose=2  # Shows detailed logs
+)
+
+# ✅ Run the Agent System
+result = crew.kickoff(inputs={"topic": "Art"})
+
+# ✅ Show the Result
+from IPython.display import Markdown
+Markdown(result)
